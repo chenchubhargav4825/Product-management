@@ -1,0 +1,12 @@
+{
+  "name": "product-browsing-backend",
+  "version": "1.0.0",
+  "description": "Fast paginated product browser using Keyset vs Offset pagination",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

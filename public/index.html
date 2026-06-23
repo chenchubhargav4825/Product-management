@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fast Paginated Product Browser | Keyset vs Offset Demo</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #080c14;
+      --card-bg: rgba(20, 30, 48, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #00d2ff;
+      --primary-glow: rgba(0, 210, 255, 0.4);
+      --accent-keyset: #2ed573;
+      --accent-keyset-glow: rgba(46, 213, 115, 0.3);
+      --accent-offset: #ffa502;
+      --accent-offset-glow: rgba(255, 165, 2, 0.3);
+      --danger: #ff4757;
+      --danger-glow: rgba(255, 71, 87, 0.3);
+      --card-radius: 16px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 114, 255, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(46, 213, 115, 0.05) 0%, transparent 40%);
+      line-height: 1.6;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    header {
+      padding: 2.5rem 2rem 1.5rem;
+      text-align: center;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto 1.5rem;
+      font-weight: 300;
+    }
+
+    main {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Glassmorphism Card Style */
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    /* Sidebar controls */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .sidebar h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.5rem;
+      color: var(--primary);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    select, input, button {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      width: 100%;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    select:focus, input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    button {
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, #0072ff 0%, #00d2ff 100%);
+      border: none;
+      box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+    }
+
+    button.btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 114, 255, 0.5);
+    }
+
+    button.btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    button.btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    button.btn-danger {
+      background: linear-gradient(135deg, #eb3b5a 0%, #ff4757 100%);
+      border: none;
+      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+    }
+
+    button.btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 71, 87, 0.5);
+    }
+
+    .sim-card {
+      border-left: 4px solid var(--accent-offset);
+    }
+
+    /* Comparison Area */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-keyset {
+      background: rgba(46, 213, 115, 0.15);
+      color: var(--accent-keyset);
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      box-shadow: 0 0 10px var(--accent-keyset-glow);
+    }
+
+    .badge-offset {
+      background: rgba(255, 165, 2, 0.15);
+      color: var(--accent-offset);
+      border: 1px solid rgba(255, 165, 2, 0.3);
+      box-shadow: 0 0 10px var(--accent-offset-glow);
+    }
+
+    /* Metric stats */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-box {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .metric-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .metric-value.time {
+      color: var(--primary);
+    }
+
+    .metric-value.danger-val {
+      color: var(--danger);
+      text-shadow: 0 0 8px var(--danger-glow);
+    }
+
+    .metric-value.success-val {
+      color: var(--accent-keyset);
+    }
+
+    .metric-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    /* Audit logs in column */
+    .audit-box {
+      font-size: 0.8rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      max-height: 100px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+
+    .audit-entry {
+      margin-bottom: 0.25rem;
+    }
+    
+    .audit-entry.error { color: var(--danger); }
+    .audit-entry.success { color: var(--accent-keyset); }
+    .audit-entry.info { color: var(--text-muted); }
+
+    /* Product lists */
+    .product-list-container {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      max-height: 480px;
+      overflow-y: auto;
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+
+    .product-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .product-table th {
+      position: sticky;
+      top: 0;
+      background: #111a2e;
+      padding: 0.75rem 1rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 2;
+    }
+
+    .product-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .product-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Duplicate highlighting animation */
+    @keyframes flash-red {
+      0% { background-color: rgba(255, 71, 87, 0.4); }
+      100% { background-color: rgba(255, 71, 87, 0.05); }
+    }
+
+    .row-duplicate {
+      animation: flash-red 2s ease-out forwards;
+      border-left: 3px solid var(--danger);
+      background-color: rgba(255, 71, 87, 0.05);
+    }
+
+    .row-updated {
+      border-left: 3px solid var(--accent-offset);
+      background-color: rgba(255, 165, 2, 0.05);
+    }
+
+    .row-new {
+      border-left: 3px solid var(--primary);
+      background-color: rgba(0, 210, 255, 0.05);
+    }
+
+    .p-id { font-family: monospace; font-weight: 600; color: var(--text-muted); }
+    .p-price { font-weight: 600; color: #fff; }
+    .p-time { font-size: 0.75rem; color: var(--text-muted); }
+
+    .query-log {
+      font-family: monospace;
+      font-size: 0.75rem;
+      background: #04080e;
+      border-radius: 8px;
+      padding: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: #39e9ff;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    .load-more-section {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    /* Banner/Stats */
+    .db-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(0, 114, 255, 0.1) 0%, rgba(46, 213, 115, 0.05) 100%);
+      border: 1px solid rgba(0, 114, 255, 0.2);
+      border-radius: var(--card-radius);
+      padding: 1.25rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .db-status-info {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-lbl {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 100;
+    }
+
+    .toast {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--primary);
+      border-left: 4px solid var(--primary);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      font-size: 0.9rem;
+      min-width: 300px;
+      transform: translateX(120%);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      backdrop-filter: blur(8px);
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast.toast-success {
+      border-color: var(--accent-keyset);
+      border-left-color: var(--accent-keyset);
+    }
+
+    .toast.toast-warning {
+      border-color: var(--accent-offset);
+      border-left-color: var(--accent-offset);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Dynamic Product Browser</h1>
+    <div class="subtitle">
+      Demonstrating the performance and concurrent data consistency difference between 
+      <strong>Offset-based</strong> and <strong>Keyset (Cursor-based)</strong> pagination over 200,000 products.
+    </div>
+  </header>
+
+  <!-- DB Stats Banner -->
+  <div style="max-width: 1400px; margin: 0 auto; padding: 0 2rem;">
+    <div class="db-status">
+      <div class="db-status-info">
+        <div class="stat-item">
+          <span class="stat-lbl">Database Engine</span>
+          <span class="stat-val" style="color: var(--primary);">SQLite (In-Process)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-lbl">Dataset Size</span>
+          <span class="stat-val" id="db-total-count">200,000 products</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-lbl">Seed Ordering</span>
+          <span class="stat-val" style="font-size: 1.1rem; align-self: flex-start; margin-top: 0.3rem;">Newest First (created_at DESC, id DESC)</span>
+        </div>
+      </div>
+      <button class="btn-secondary" style="width: auto;" onclick="resetDatabase()">
+        🔄 Reset & Reseed DB
+      </button>
+    </div>
+  </div>
+
+  <main>
+    <!-- Sidebar Control Panel -->
+    <div class="sidebar">
+      <div class="glass-card">
+        <h2>Filters</h2>
+        <div class="control-group">
+          <label for="category-filter">Category Filter</label>
+          <select id="category-filter" onchange="onFilterChange()">
+            <option value="">All Categories (Strictly Sequential IDs)</option>
+            <!-- Categories populated dynamically -->
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="page-size">Page Size</label>
+          <select id="page-size" onchange="onPageSizeChange()">
+            <option value="10">10 items</option>
+            <option value="20" selected>20 items</option>
+            <option value="50">50 items</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="resetBrowsers()">Reset Sessions</button>
+      </div>
+
+      <div class="glass-card sim-card">
+        <h2>Simulate Concurrent Writes</h2>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Add or update products while browsing to see how pagination handles real-time database modifications.
+        </p>
+        <div class="control-group" style="margin-bottom: 0.75rem;">
+          <button class="btn-secondary" onclick="simulateNewProducts(50)">
+            ➕ Add 50 New Products (Top)
+          </button>
+        </div>
+        <div class="control-group">
+          <button class="btn-secondary" onclick="simulateUpdates(50)">
+            ✏️ Update 50 Products in DB
+          </button>
+        </div>
+        <div id="sim-log" style="font-size: 0.75rem; color: var(--accent-offset); font-family: monospace; text-align: center; height: 1.2rem;"></div>
+      </div>
+    </div>
+
+    <!-- Comparison Grid -->
+    <div class="comparison-grid">
+      
+      <!-- COLUMN 1: OFFSET PAGINATION -->
+      <div class="glass-card" id="offset-card" style="border-top: 4px solid var(--accent-offset);">
+        <div class="column-header">
+          <h3>Traditional Pagination</h3>
+          <span class="badge badge-offset">LIMIT & OFFSET</span>
+        </div>
+
+        <div class="metrics-bar">
+          <div class="metric-box">
+            <div class="metric-value time" id="offset-query-time">0.00 ms</div>
+            <div class="metric-label">Query Time</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-value danger-val" id="offset-duplicates">0</div>
+            <div class="metric-label">Duplicates</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-value danger-val" id="offset-missed">0</div>
+            <div class="metric-label">Missed</div>
+          </div>
+        </div>
+
+        <div class="audit-box" id="offset-audit-log">
+          <div class="audit-entry info">Audit Log started...</div>
+        </div>
+
+        <div class="query-log" id="offset-query-log">
+          SELECT * FROM products ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET 0;
+        </div>
+
+        <div class="product-list-container">
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th style="text-align: right; width: 80px;">Price</th>
+              </tr>
+            </thead>
+            <tbody id="offset-product-body">
+              <!-- Products loaded here -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="load-more-section">
+          <button class="btn-primary" id="offset-next-btn" onclick="fetchNextOffsetPage()">
+            Load Next Page (Page <span id="offset-next-num">2</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- COLUMN 2: KEYSET PAGINATION -->
+      <div class="glass-card" id="keyset-card" style="border-top: 4px solid var(--accent-keyset);">
+        <div class="column-header">
+          <h3>Consistent Pagination</h3>
+          <span class="badge badge-keyset">Keyset (Cursor)</span>
+        </div>
+
+        <div class="metrics-bar">
+          <div class="metric-box">
+            <div class="metric-value time" id="keyset-query-time">0.00 ms</div>
+            <div class="metric-label">Query Time</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-value success-val" id="keyset-duplicates">0</div>
+            <div class="metric-label">Duplicates</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-value success-val" id="keyset-missed">0</div>
+            <div class="metric-label">Missed</div>
+          </div>
+        </div>
+
+        <div class="audit-box" id="keyset-audit-log">
+          <div class="audit-entry info">Audit Log started...</div>
+        </div>
+
+        <div class="query-log" id="keyset-query-log">
+          SELECT * FROM products ORDER BY created_at DESC, id DESC LIMIT 20;
+        </div>
+
+        <div class="product-list-container">
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th style="text-align: right; width: 80px;">Price</th>
+              </tr>
+            </thead>
+            <tbody id="keyset-product-body">
+              <!-- Products loaded here -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="load-more-section">
+          <button class="btn-primary" id="keyset-next-btn" onclick="fetchNextKeysetPage()" style="background: linear-gradient(135deg, #2ed573 0%, #7bed9f 100%); box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);">
+            Load Next Page (Cursor)
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    // State Variables
+    let categories = [];
+    let pageSize = 20;
+    
+    // Offset Session State
+    let offsetOffset = 0;
+    let offsetProductsSeen = new Set();
+    let offsetLastSeenId = null;
+    let offsetDuplicateCount = 0;
+    let offsetMissedCount = 0;
+    let offsetPagesCount = 0;
+
+    // Keyset Session State
+    let keysetCursor = null;
+    let keysetProductsSeen = new Set();
+    let keysetLastSeenId = null;
+    let keysetDuplicateCount = 0;
+    let keysetMissedCount = 0;
+    let keysetPagesCount = 0;
+
+    // IDs from simulations to highlight in tables
+    let newlySimulatedIds = new Set();
+    let updatedSimulatedIds = new Set();
+
+    // DOM Elements
+    const categoryFilter = document.getElementById('category-filter');
+    const pageSizeSelect = document.getElementById('page-size');
+    const dbTotalCount = document.getElementById('db-total-count');
+    
+    // Page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      await fetchStats();
+      await resetBrowsers();
+    });
+
+    // Toast utility
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type === 'success' ? 'toast-success' : type === 'warning' ? 'toast-warning' : ''}`;
+      toast.innerText = message;
+      container.appendChild(toast);
+      
+      // Trigger reflow for transition
+      toast.offsetHeight;
+      toast.classList.add('show');
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Fetch Stats & Categories
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        dbTotalCount.innerText = data.totalCount.toLocaleString() + " products";
+        
+        // Populating categories
+        const currentCategory = categoryFilter.value;
+        categoryFilter.innerHTML = '<option value="">All Categories (Strictly Sequential IDs)</option>';
+        data.categories.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.category;
+          opt.innerText = `${c.category} (~${c.count.toLocaleString()} products)`;
+          categoryFilter.appendChild(opt);
+        });
+        categoryFilter.value = currentCategory;
+      } catch (err) {
+        console.error("Failed to load stats", err);
+      }
+    }
+
+    // Reset both browsers and start a fresh scrolling session
+    async function resetBrowsers() {
+      newlySimulatedIds.clear();
+      updatedSimulatedIds.clear();
+      document.getElementById('sim-log').innerText = '';
+
+      // Reset Offset states
+      offsetOffset = 0;
+      offsetProductsSeen.clear();
+      offsetLastSeenId = null;
+      offsetDuplicateCount = 0;
+      offsetMissedCount = 0;
+      offsetPagesCount = 0;
+      document.getElementById('offset-product-body').innerHTML = '';
+      document.getElementById('offset-duplicates').innerText = '0';
+      document.getElementById('offset-missed').innerText = '0';
+      document.getElementById('offset-query-time').innerText = '0.00 ms';
+      document.getElementById('offset-next-num').innerText = '1';
+      const offsetAudit = document.getElementById('offset-audit-log');
+      offsetAudit.innerHTML = '<div class="audit-entry info">Audit Log started...</div>';
+
+      // Reset Keyset states
+      keysetCursor = null;
+      keysetProductsSeen.clear();
+      keysetLastSeenId = null;
+      keysetDuplicateCount = 0;
+      keysetMissedCount = 0;
+      keysetPagesCount = 0;
+      document.getElementById('keyset-product-body').innerHTML = '';
+      document.getElementById('keyset-duplicates').innerText = '0';
+      document.getElementById('keyset-missed').innerText = '0';
+      document.getElementById('keyset-query-time').innerText = '0.00 ms';
+      const keysetAudit = document.getElementById('keyset-audit-log');
+      keysetAudit.innerHTML = '<div class="audit-entry info">Audit Log started...</div>';
+
+      // Fetch first pages
+      await Promise.all([
+        fetchNextOffsetPage(),
+        fetchNextKeysetPage()
+      ]);
+      
+      showToast("Browsing sessions reset. Loaded page 1.");
+    }
+
+    function onFilterChange() {
+      resetBrowsers();
+    }
+
+    function onPageSizeChange() {
+      pageSize = parseInt(pageSizeSelect.value);
+      resetBrowsers();
+    }
+
+    // --- OFFSET PAGINATION FETCH ---
+    async function fetchNextOffsetPage() {
+      const category = categoryFilter.value;
+      const url = `/api/products?mode=offset&limit=${pageSize}&offset=${offsetOffset}` + 
+                  (category ? `&category=${encodeURIComponent(category)}` : '');
+
+      // Log exact SQL
+      let sqlText = category ? 
+        `SELECT id, name, category, price, created_at FROM products\nWHERE category = '${category.replace(/'/g, "''")}'\nORDER BY created_at DESC, id DESC\nLIMIT ${pageSize} OFFSET ${offsetOffset};` :
+        `SELECT id, name, category, price, created_at FROM products\nORDER BY created_at DESC, id DESC\nLIMIT ${pageSize} OFFSET ${offsetOffset};`;
+      
+      document.getElementById('offset-query-log').innerText = sqlText;
+
+      const btn = document.getElementById('offset-next-btn');
+      btn.disabled = true;
+
+      try {
+        const startClient = performance.now();
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        document.getElementById('offset-query-time').innerText = `${data.executionTimeMs} ms`;
+        
+        offsetPagesCount++;
+        const auditLog = document.getElementById('offset-audit-log');
+        auditLog.innerHTML += `<div class="audit-entry info">Page ${offsetPagesCount}: Fetched ${data.products.length} products (offset ${offsetOffset}).</div>`;
+
+        renderProducts('offset', data.products);
+
+        if (data.pagination.has_more) {
+          offsetOffset = data.pagination.next_offset;
+          document.getElementById('offset-next-num').innerText = (offsetOffset / pageSize) + 1;
+          btn.disabled = false;
+        } else {
+          document.getElementById('offset-next-num').innerText = 'End';
+          btn.disabled = true;
+          auditLog.innerHTML += `<div class="audit-entry info">Reached end of offset list.</div>`;
+        }
+      } catch (err) {
+        console.error("Offset fetch error", err);
+        showToast("Offset pagination request failed", "warning");
+      }
+      
+      // scroll audit log
+      const audit = document.getElementById('offset-audit-log');
+      audit.scrollTop = audit.scrollHeight;
+    }
+
+    // --- KEYSET PAGINATION FETCH ---
+    async function fetchNextKeysetPage() {
+      const category = categoryFilter.value;
+      const url = `/api/products?mode=keyset&limit=${pageSize}` + 
+                  (keysetCursor ? `&cursor=${encodeURIComponent(keysetCursor)}` : '') + 
+                  (category ? `&category=${encodeURIComponent(category)}` : '');
+
+      // Generate SQL representation for log
+      let sqlText = '';
+      if (category) {
+        if (keysetCursor) {
+          const decoded = JSON.parse(atob(keysetCursor));
+          sqlText = `SELECT id, name, category, price, created_at FROM products\nWHERE category = '${category.replace(/'/g, "''")}' AND (created_at < ${decoded.created_at} OR (created_at = ${decoded.created_at} AND id < ${decoded.id}))\nORDER BY created_at DESC, id DESC\nLIMIT ${pageSize};`;
+        } else {
+          sqlText = `SELECT id, name, category, price, created_at FROM products\nWHERE category = '${category.replace(/'/g, "''")}'\nORDER BY created_at DESC, id DESC\nLIMIT ${pageSize};`;
+        }
+      } else {
+        if (keysetCursor) {
+          const decoded = JSON.parse(atob(keysetCursor));
+          sqlText = `SELECT id, name, category, price, created_at FROM products\nWHERE (created_at < ${decoded.created_at} OR (created_at = ${decoded.created_at} AND id < ${decoded.id}))\nORDER BY created_at DESC, id DESC\nLIMIT ${pageSize};`;
+        } else {
+          sqlText = `SELECT id, name, category, price, created_at FROM products\nORDER BY created_at DESC, id DESC\nLIMIT ${pageSize};`;
+        }
+      }
+      document.getElementById('keyset-query-log').innerText = sqlText;
+
+      const btn = document.getElementById('keyset-next-btn');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        document.getElementById('keyset-query-time').innerText = `${data.executionTimeMs} ms`;
+        
+        keysetPagesCount++;
+        const auditLog = document.getElementById('keyset-audit-log');
+        auditLog.innerHTML += `<div class="audit-entry info">Page ${keysetPagesCount}: Fetched ${data.products.length} products.</div>`;
+
+        renderProducts('keyset', data.products);
+
+        if (data.pagination.has_more) {
+          keysetCursor = data.pagination.next_cursor;
+          btn.disabled = false;
+        } else {
+          btn.disabled = true;
+          auditLog.innerHTML += `<div class="audit-entry info">Reached end of keyset list.</div>`;
+        }
+      } catch (err) {
+        console.error("Keyset fetch error", err);
+        showToast("Keyset pagination request failed", "warning");
+      }
+
+      // scroll audit log
+      const audit = document.getElementById('keyset-audit-log');
+      audit.scrollTop = audit.scrollHeight;
+    }
+
+    // --- RENDER PRODUCTS AND AUDIT INCONSISTENCIES ---
+    function renderProducts(mode, products) {
+      const tbody = document.getElementById(`${mode}-product-body`);
+      const auditLog = document.getElementById(`${mode}-audit-log`);
+      const isFiltered = categoryFilter.value !== "";
+
+      products.forEach(p => {
+        let isDuplicate = false;
+        let isMissed = false;
+        let missedCount = 0;
+
+        // 1. Audit Duplicates
+        if (mode === 'offset') {
+          if (offsetProductsSeen.has(p.id)) {
+            isDuplicate = true;
+            offsetDuplicateCount++;
+            document.getElementById('offset-duplicates').innerText = offsetDuplicateCount;
+            auditLog.innerHTML += `<div class="audit-entry error">⚠️ DUPLICATE DETECTED: Product ID #${p.id} ("${p.name}") seen again!</div>`;
+          }
+          offsetProductsSeen.add(p.id);
+        } else {
+          if (keysetProductsSeen.has(p.id)) {
+            isDuplicate = true;
+            keysetDuplicateCount++;
+            document.getElementById('keyset-duplicates').innerText = keysetDuplicateCount;
+            auditLog.innerHTML += `<div class="audit-entry error">⚠️ DUPLICATE DETECTED: Product ID #${p.id} ("${p.name}") seen again!</div>`;
+          }
+          keysetProductsSeen.add(p.id);
+        }
+
+        // 2. Audit Missed Items (only mathematically accurate when not filtering by category, because DB is sequential IDs)
+        if (!isFiltered) {
+          if (mode === 'offset') {
+            if (offsetLastSeenId !== null) {
+              const expectedId = offsetLastSeenId - 1;
+              if (p.id < expectedId) {
+                isMissed = true;
+                missedCount = expectedId - p.id;
+                offsetMissedCount += missedCount;
+                document.getElementById('offset-missed').innerText = offsetMissedCount;
+                auditLog.innerHTML += `<div class="audit-entry error">❌ MISSED ${missedCount} PRODUCTS: Skips from ID #${offsetLastSeenId} down to #${p.id}!</div>`;
+              }
+            }
+            // Update last seen (only if not a duplicate backward shift)
+            if (!isDuplicate || offsetLastSeenId === null || p.id < offsetLastSeenId) {
+              offsetLastSeenId = p.id;
+            }
+          } else {
+            if (keysetLastSeenId !== null) {
+              const expectedId = keysetLastSeenId - 1;
+              if (p.id < expectedId) {
+                isMissed = true;
+                missedCount = expectedId - p.id;
+                keysetMissedCount += missedCount;
+                document.getElementById('keyset-missed').innerText = keysetMissedCount;
+                auditLog.innerHTML += `<div class="audit-entry error">❌ MISSED ${missedCount} PRODUCTS: Skips from ID #${keysetLastSeenId} down to #${p.id}!</div>`;
+              }
+            }
+            if (!isDuplicate || keysetLastSeenId === null || p.id < keysetLastSeenId) {
+              keysetLastSeenId = p.id;
+            }
+          }
+        }
+
+        // Build Table Row
+        const tr = document.createElement('tr');
+        
+        // Highlight states
+        if (isDuplicate) {
+          tr.className = 'row-duplicate';
+        } else if (newlySimulatedIds.has(p.id)) {
+          tr.className = 'row-new';
+        } else if (updatedSimulatedIds.has(p.id)) {
+          tr.className = 'row-updated';
+        }
+
+        // Formatted timestamp
+        const timeStr = new Date(p.created_at).toLocaleTimeString();
+
+        tr.innerHTML = `
+          <td class="p-id">${p.id}</td>
+          <td>${p.name}</td>
+          <td>${p.category}</td>
+          <td class="p-price" style="text-align: right;">$${p.price.toFixed(2)}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // Auto-scroll product container to bottom to show new page loading
+      const container = tbody.closest('.product-list-container');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // --- SIMULATIONS ---
+
+    // 1. Add 50 new products at the top
+    async function simulateNewProducts(count) {
+      document.getElementById('sim-log').innerText = 'Adding products...';
+      try {
+        const res = await fetch('/api/products/simulate-new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count })
+        });
+        const data = await res.json();
+        
+        // Keep track of new product IDs to highlight them
+        data.products.forEach(p => newlySimulatedIds.add(p.id));
+        
+        document.getElementById('sim-log').innerText = data.message;
+        showToast(data.message, "success");
+        await fetchStats();
+      } catch (err) {
+        console.error("Simulation failed", err);
+        showToast("Simulation failed", "warning");
+      }
+    }
+
+    // 2. Update 50 products
+    async function simulateUpdates(count) {
+      document.getElementById('sim-log').innerText = 'Updating products...';
+      try {
+        const res = await fetch('/api/products/simulate-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count })
+        });
+        const data = await res.json();
+        document.getElementById('sim-log').innerText = data.message;
+        showToast(data.message, "success");
+        await fetchStats();
+      } catch (err) {
+        console.error("Simulation failed", err);
+        showToast("Simulation failed", "warning");
+      }
+    }
+
+    // 3. Reset Database
+    async function resetDatabase() {
+      if (!confirm("Are you sure you want to delete and re-seed 200,000 products? This takes ~0.5 seconds.")) return;
+      
+      showToast("Resetting database...");
+      try {
+        const res = await fetch('/api/products/reset', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message, "success");
+        await fetchStats();
+        await resetBrowsers();
+      } catch (err) {
+        console.error("Reset failed", err);
+        showToast("Reset failed", "warning");
+      }
+    }
+  </script>
+</body>
+</html>
