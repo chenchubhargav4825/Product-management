@@ -348,6 +348,19 @@ app.post('/api/products/reset', (req, res) => {
 /**
  * Get stats about database
  */
+app.get("/test", async (req, res) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*");
+
+  if (error) {
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+
+  res.json(data);
+});
 app.get('/api/stats', (req, res) => {
   try {
     const countRow = db.prepare('SELECT COUNT(*) AS count FROM products').get();
