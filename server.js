@@ -1,3 +1,5 @@
+import supabase from "./supabase.js";
+
 const express = require('express');
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
